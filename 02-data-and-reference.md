@@ -23,4 +23,4 @@
 - Where are the code and output? Link them, and include the command needed to rerun the result if available.
   - The code is included in our [Project Baseline](project_baseline.ipynb)
 - What did this first result suggest, and what will you try next?
-    This suggests that simple numeric features do great on the training data, but will need to do a lot of tuning in order to fully model the unseen data.
+  - This suggests that simple numeric features do great on the training data, but will need to do a lot of tuning in order to fully model the unseen data.
