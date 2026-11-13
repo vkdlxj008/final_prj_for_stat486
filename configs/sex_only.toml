@@ -1,0 +1,23 @@
+name = "sex_only"
+# Reference: p_hat = training-fold survival rate by Sex. Hard predictions
+# equal Kaggle's gender_submission rule.
+
+[paths]
+train = "data/train.csv"
+test = "data/test.csv"
+results_dir = "results"
+submissions_dir = "submissions"
+
+[data]
+id_col = "PassengerId"
+target = "Survived"
+
+[cv]
+n_splits = 5
+n_repeats = 5
+seed = 486
+clip_eps = 1e-15
+
+[model]
+type = "group_rate"
+params = { column = "Sex" }

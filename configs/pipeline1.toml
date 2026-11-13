@@ -1,0 +1,37 @@
+name = "pipeline1"
+# Pipeline 1: passenger-level features only, Random Forest.
+# All imputation/encoding is fit inside each training fold.
+
+[paths]
+train = "data/train.csv"
+test = "data/test.csv"
+results_dir = "results"
+submissions_dir = "submissions"
+
+[data]
+id_col = "PassengerId"
+target = "Survived"
+
+[cv]
+n_splits = 5
+n_repeats = 5
+seed = 486
+clip_eps = 1e-15
+
+[features.title]
+map = { Mlle = "Miss", Ms = "Miss", Mme = "Mrs" }
+keep = ["Mr", "Mrs", "Miss", "Master"]
+other = "Rare"
+
+[preprocess.numeric]
+columns = ["Pclass", "Age", "SibSp", "Parch", "Fare"]
+impute = "median"
+
+[preprocess.categorical]
+columns = ["Sex", "Embarked", "Title"]
+impute = "most_frequent"
+onehot = true
+
+[model]
+type = "random_forest"
+params = { n_estimators = 100, random_state = 42 }
