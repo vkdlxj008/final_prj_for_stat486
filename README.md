@@ -69,7 +69,7 @@ Repeated stratified 5-fold CV (5 repeats, 25 folds, seed 486), with the same fol
 | Method | Commit | CV accuracy (sd) | CV log loss (sd) | Train acc | Kaggle score |
 |---|---|---|---|---|---|
 | Sex-only reference | a123cf9 | 0.787 (0.029) | 0.517 (0.037) | 0.787 | TBD |
-| Pipeline 1 (RF, passenger features + Title) | a123cf9 | 0.812 (0.031) | 0.801 (0.314) | 0.984 | TBD |
+| Pipeline 1 (RF, passenger features + Title) | a123cf9 | 0.812 (0.031) | 0.801 (0.314) | 0.984 | 0.78708 |
 
 Pipeline 1 features: `Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, Title`. Model: `RandomForestClassifier(n_estimators=100, random_state=42)`.
 
