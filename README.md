@@ -80,3 +80,25 @@ Pipeline 1 features: `Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, Title`. Mo
 #### Next
 - Pipeline 2: add leakage-safe ticket and surname group features. Before that, decide whether to fix RF overconfidence separately (e.g., `min_samples_leaf` or calibration), so the effect of the group features is not confounded with a calibration change.
 - Add the ticket-group holdout as a stability check.
+
+### Nov 19, 2026: Evidence and interpretation
+
+**Status:** Gradient Boosting and Random Forest are compared on a held-out 20% split; next work will address overfitting and regularize the models.
+
+#### Route B evidence
+
+The substantive design change was replacing the grid-searched model with Gradient Boosting. The updated comparison is in [the baseline notebook](project_baseline.ipynb), with the 80/20 train/test split and model results recorded there. Gradient Boosting improved on the grid-search result and available Kaggle validation, but it did not improve on the baseline Random Forest's held-out accuracy.
+
+| Method | Train accuracy | Test accuracy | Comparison |
+|---|---:|---:|---|
+| Grid search / tuned RF | - | 81.56% | Tuned cross-validation accuracy: 79.64% |
+| Gradient Boosting | 91.71% | 83.80% | Improved over grid search and the available Kaggle result |
+| Baseline Random Forest | 98.31% | 84.36% | 0.56 percentage points above Gradient Boosting on the held-out split |
+
+Supporting outputs: [baseline notebook](project_baseline.ipynb) and [submission history](submissions/pipeline1.csv). The existing Pipeline 1 implementation and run command remain documented above; its configuration is [configs/pipeline1.toml](configs/pipeline1.toml), and the run log is [results/runs.csv](results/runs.csv).
+
+#### Interpretation
+
+Both ensembles fit the training data substantially better than the held-out split: Gradient Boosting had a 7.91-point train/test gap, while Random Forest had a larger 13.95-point gap. This is evidence of variance and overfitting, especially for Random Forest. It also makes model choice less decisive than a single accuracy value suggests: the held-out test accuracies differ by only 0.56 percentage points.
+
+The gradient-boosted model is therefore not a clear winner despite improving training accuracy and beating the grid-search result. We will test regularization and simpler models next, using feature selection and methods such as limiting tree depth, adding minimum leaf requirements, or increasing regularization, while preserving the same folds and comparison structure.
