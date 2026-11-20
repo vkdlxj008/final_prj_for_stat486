@@ -14,6 +14,20 @@ def extract_title(names: pd.Series, title_map: dict[str, str], keep: list[str], 
     return mapped.where(mapped.isin(keep), other)
 
 
+def add_group_size(train: pd.DataFrame, test: pd.DataFrame, key: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Number of passengers sharing `key` (e.g. Ticket), counted over train + test.
+
+    Uses no labels, so it does not leak the target. It is transductive: the
+    count includes test passengers, which is allowed because test features
+    are given to every competitor.
+    """
+    counts = pd.concat([train[key], test[key]]).value_counts()
+    return (
+        train.assign(group_size=train[key].map(counts).astype(int)),
+        test.assign(group_size=test[key].map(counts).astype(int)),
+    )
+
+
 def add_features(df: pd.DataFrame, feat_cfg: dict) -> pd.DataFrame:
     """Return a copy of df with derived columns requested in the config."""
     out = df.copy()
