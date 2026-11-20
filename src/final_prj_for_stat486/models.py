@@ -3,7 +3,7 @@ returned estimator so it is fit on the training fold only."""
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
@@ -36,6 +36,53 @@ class GroupRateClassifier(ClassifierMixin, BaseEstimator):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
 
 
+class CompanionFeatures(TransformerMixin, BaseEstimator):
+    """Survival of a passenger's known travel companions, from training labels only.
+
+    Companions are other passengers with the same `group_col` (Ticket). In fit,
+    the labels of the training rows are stored. In transform:
+      - a training row uses its companions' labels with its own label removed
+        (leave-one-out), so no row ever sees its own label;
+      - any other row (validation fold, Kaggle test) uses all training
+        companions' labels.
+    Rows are identified by `id_col`, so this works inside a Pipeline, where
+    transform is called on both training and validation rows.
+
+    Adds: companion_surv_rate (filled with `fill` when there are no known
+    companions), n_known_companions, has_known_companion.
+    """
+
+    def __init__(self, group_col: str = "Ticket", id_col: str = "PassengerId", fill: float = 0.5):
+        self.group_col = group_col
+        self.id_col = id_col
+        self.fill = fill
+
+    def fit(self, X: pd.DataFrame, y):
+        y = np.asarray(y, dtype=float)
+        df = pd.DataFrame({"g": X[self.group_col].to_numpy(), "y": y})
+        agg = df.groupby("g")["y"].agg(["sum", "count"])
+        self.sum_ = agg["sum"].to_dict()
+        self.count_ = agg["count"].to_dict()
+        self.own_label_ = dict(zip(X[self.id_col].to_numpy(), y))
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        g = X[self.group_col]
+        s = g.map(self.sum_).fillna(0.0).to_numpy(dtype=float)
+        c = g.map(self.count_).fillna(0.0).to_numpy(dtype=float)
+        own = X[self.id_col].map(self.own_label_)
+        in_train = own.notna().to_numpy()
+        s = s - own.fillna(0.0).to_numpy(dtype=float)
+        c = c - in_train.astype(float)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            rate = np.where(c > 0, s / np.where(c > 0, c, 1.0), self.fill)
+        out = X.copy()
+        out["companion_surv_rate"] = rate
+        out["n_known_companions"] = c
+        out["has_known_companion"] = (c > 0).astype(int)
+        return out
+
+
 def build_preprocessor(prep_cfg: dict) -> ColumnTransformer:
     transformers = []
     for name, spec in prep_cfg.items():
@@ -46,7 +93,7 @@ def build_preprocessor(prep_cfg: dict) -> ColumnTransformer:
     return ColumnTransformer(transformers, remainder="drop")
 
 
-def build_estimator(model_cfg: dict, prep_cfg: dict | None):
+def build_estimator(model_cfg: dict, prep_cfg: dict | None, companion_cfg: dict | None = None):
     kind = model_cfg["type"]
     params = model_cfg.get("params", {})
     if kind == "group_rate":
@@ -57,4 +104,7 @@ def build_estimator(model_cfg: dict, prep_cfg: dict | None):
         raise ValueError(f"Unknown model type: {kind}")
     if prep_cfg is None:
         return clf
-    return Pipeline([("prep", build_preprocessor(prep_cfg)), ("model", clf)])
+    steps = [("prep", build_preprocessor(prep_cfg)), ("model", clf)]
+    if companion_cfg:
+        steps.insert(0, ("companions", CompanionFeatures(**companion_cfg)))
+    return Pipeline(steps)
